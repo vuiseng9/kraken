@@ -2,3 +2,5 @@
 tabulate
 tyro
 cuda-bindings
+matplotlib
+click
