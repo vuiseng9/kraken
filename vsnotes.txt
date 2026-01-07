@@ -6,4 +6,12 @@ pip install -r requirements.txt
 pip install -e .
 
 # run
-make hello-world-all-reduce
+make bench-all
+
+Opens:
+* benchmark/benchmark_all_reduce.py
+    triton_2shot backend failed, msg appeared to be driver issue
+* benchmark/benchmark_matmul_reduce_scatter.py
+    triton_ce backend failed, triton threw out of resources
+* benchmark/benchmark_all_gather_matmul.py
+    working but reduce dim to fit memory

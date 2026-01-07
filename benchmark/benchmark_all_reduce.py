@@ -240,7 +240,7 @@ benchmark/benchmark_all_reduce.py
             "dist_1shot",
             "dist_2shot",
         ],
-        default=["nccl", "triton_1shot", "dist_multimem"],
+        default=["nccl", "triton_1shot", "dist_multimem", "dist_1shot", "dist_2shot"], # triton_2shot failed
         help="Backend to use for AllReduce. Use first backend as baseline. ",
     )
 

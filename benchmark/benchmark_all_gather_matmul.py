@@ -226,7 +226,7 @@ benchmark/benchmark_all_gather_matmul.py
         default=[
             (m, 6656, k)
             for m in [2**x for x in range(7, 11)]
-            for k in [2**x for x in range(12, 16)]
+            for k in [2**x for x in range(12, 14)] 
         ],
         help="matmul shapes: M, N, K. (M, K) @ (K, N) -> (M, N)",
     )
