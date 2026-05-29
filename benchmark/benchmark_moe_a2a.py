@@ -666,6 +666,9 @@ def main(args: argparse.Namespace) -> None:
     torch.cuda.set_device(device)
     symm_mem.set_backend("NVSHMEM")
     dist.init_process_group("nccl", device_id=device)
+    _torch_ver = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
+    if _torch_ver <= (2, 11):
+        symm_mem.enable_symm_mem_for_group(dist.group.WORLD.group_name)
     torch.manual_seed(args.seed + local_rank)
 
     configs = generate_experiment_configs(args, device)
