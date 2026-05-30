@@ -372,7 +372,7 @@ def dispatch_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
         config.ne,
         config.align,
     )
-    eager_rank_major = torch.empty(
+    eager_expert_major = torch.empty(
         (output_tokens, config.hidden),
         dtype=config.dtype,
         device=config.device,
@@ -436,8 +436,8 @@ def dispatch_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
             world_size,
             config.ne,
         )
-        torch.index_select(routed_input, 0, indices, out=eager_rank_major)
-        return eager_rank_major
+        torch.index_select(routed_input, 0, indices, out=eager_expert_major)
+        return eager_expert_major
 
     benchmarks: dict[str, Fn] = {
         "torchtitan_eager": torchtitan_eager,
