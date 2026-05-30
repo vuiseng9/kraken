@@ -30,6 +30,16 @@ bench-ar-bias-rms-norm:
 a2a-ep:
 	DBG_ATTACH=$(dbg) $(intranode_run) benchmark/benchmark_moe_a2a.py --save-path moe_a2a_results.csv
 
+olmoe-a2a-ep:
+	DBG_ATTACH=$(dbg) $(intranode_run) benchmark/benchmark_moe_a2a.py \
+		--ne 8 \
+		--top-k 8 \
+		--hidden 2048 \
+		--copy-block-size 2048 \
+		--max-num-blocks 512 \
+		--num-warps 4 \
+		--save-path olmoe_results.csv
+
 dispatch-torchtitan-test:
 	DBG_ATTACH=$(dbg) $(intranode_run) moe_symm_mem_kernels/dispatch.py
 

@@ -226,6 +226,7 @@ class ExperimentConfig:
     ne: int
     hidden: int
     align: int
+    top_k: int
     dtype: torch.dtype
     backends: list[str]
     baseline_backend: str
@@ -242,6 +243,7 @@ class ExperimentConfig:
     def bytes_per_rank(self) -> int:
         return (
             self.tokens_per_rank
+            * self.top_k
             * self.hidden
             * torch.empty((), dtype=self.dtype).element_size()
         )
@@ -285,6 +287,7 @@ def generate_experiment_configs(
                             ne=ne,
                             hidden=hidden,
                             align=args.align,
+                            top_k=args.top_k,
                             dtype=args.dtype,
                             backends=args.backend,
                             baseline_backend=args.backend[0],
@@ -306,7 +309,7 @@ def make_base_values(config: ExperimentConfig) -> torch.Tensor:
     generator = torch.Generator(device=config.device)
     generator.manual_seed(config.seed + 1009 * rank)
     return torch.randn(
-        (config.tokens_per_rank, config.hidden),
+        (config.tokens_per_rank * config.top_k, config.hidden),
         dtype=config.dtype,
         device=config.device,
         generator=generator,
@@ -319,7 +322,7 @@ def make_base_splits(config: ExperimentConfig, salt: int) -> torch.Tensor:
     generator = torch.Generator(device=config.device)
     generator.manual_seed(config.seed + salt + 101 * rank)
     return exact_random_splits(
-        config.tokens_per_rank,
+        config.tokens_per_rank * config.top_k,
         config.ne * world_size,
         config.device,
         generator,
@@ -329,7 +332,7 @@ def make_base_splits(config: ExperimentConfig, salt: int) -> torch.Tensor:
 def dispatch_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
     world_size = dist.get_world_size()
     nsplits = config.ne * world_size
-    max_out_tokens = config.tokens_per_rank * world_size + config.ne * config.align
+    max_out_tokens = config.tokens_per_rank * config.top_k * world_size + config.ne * config.align
 
     base_values = make_base_values(config)
     base_splits = make_base_splits(config, salt=0)
@@ -471,7 +474,7 @@ def dispatch_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
 def combine_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
     world_size = dist.get_world_size()
     nsplits = config.ne * world_size
-    max_out_tokens = config.tokens_per_rank * world_size
+    max_out_tokens = config.tokens_per_rank * config.top_k * world_size
 
     base_values = make_base_values(config)
     base_splits_expert_major = make_base_splits(config, salt=12345)
@@ -521,7 +524,7 @@ def combine_benchmarks(config: ExperimentConfig) -> dict[str, Fn]:
         base_offsets_expert_major,
     )
     compact_expert_major = torch.empty(
-        (config.tokens_per_rank, config.hidden),
+        (config.tokens_per_rank * config.top_k, config.hidden),
         dtype=config.dtype,
         device=config.device,
     )
@@ -666,6 +669,16 @@ def main(args: argparse.Namespace) -> None:
     torch.cuda.set_device(device)
     symm_mem.set_backend("NVSHMEM")
     dist.init_process_group("nccl", device_id=device)
+    world_size = dist.get_world_size()
+    for ne in args.ne:
+        if args.top_k >= ne * world_size:
+            if dist.get_rank() == 0:
+                print(
+                    f"Error: --top-k ({args.top_k}) must be smaller than "
+                    f"ne * world_size ({ne} * {world_size} = {ne * world_size})"
+                )
+            dist.destroy_process_group()
+            sys.exit(1)
     _torch_ver = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
     if _torch_ver <= (2, 11):
         symm_mem.enable_symm_mem_for_group(dist.group.WORLD.group_name)
@@ -719,6 +732,7 @@ benchmark/benchmark_moe_a2a.py
     )
     parser.add_argument("--ne", type=int, nargs="+", default=[8])
     parser.add_argument("--hidden", type=int, nargs="+", default=[4096])
+    parser.add_argument("--top-k", type=int, default=1)
     parser.add_argument("--align", type=int, default=8)
     parser.add_argument("-dtype", "--dtype", type=str, default="bfloat16")
     parser.add_argument("--seed", type=int, default=42)
