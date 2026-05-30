@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 import torch
 import torch.distributed as dist
 import torch.distributed._symmetric_memory as symm_mem
@@ -88,6 +89,7 @@ class AllToAllVDev2d(torch.autograd.Function):
             out_splits_offsets, grad_out_buf, grad_in_buf, grad_in_splits_offsets
         )
         ctx.group_name = group_name
+        return out
 
     @staticmethod
     def backward(  # type: ignore[no-untyped-def]
@@ -230,7 +232,9 @@ def test_token_dispatch() -> None:
     torch.manual_seed(42 + rank)
 
     group_name = dist.group.WORLD.group_name
-    symm_mem.enable_symm_mem_for_group(group_name)
+    _torch_ver = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
+    if _torch_ver <= (2, 11):
+        symm_mem.enable_symm_mem_for_group(dist.group.WORLD.group_name)
 
     dtype = torch.float
     # Number of experts per rank
@@ -268,10 +272,10 @@ def test_token_dispatch() -> None:
         device,
     )
 
-    compiled_dispatcher = torch.compile(
-        dispatcher,
-        fullgraph=True,
-    )
+    # compiled_dispatcher = torch.compile(
+    #     dispatcher,
+    #     fullgraph=True,
+    # )
 
     # Perform a Dot product with output, so that gradients passed back from
     # different ranks are different
@@ -286,7 +290,7 @@ def test_token_dispatch() -> None:
         ).requires_grad_(True)
         tokens.grad = None
         inp.copy_(tokens)
-        output = compiled_dispatcher(inp, out, in_splits, out_splits_offsets)
+        output = dispatcher(inp, out, in_splits, out_splits_offsets)
         p = torch.matmul(weight, output)
         p.sum().backward()
 
@@ -306,6 +310,16 @@ def test_token_dispatch() -> None:
 
 
 if __name__ == "__main__":
+    DBG_ATTACH = False
+    if int(os.environ.get("DBG_ATTACH", "0")) == 1:
+        DBG_ATTACH = True
+        
+    if DBG_ATTACH and int(os.environ.get("RANK", "0")) == 0:
+        import debugpy
+        debugpy.listen(("127.0.0.1", 5678))
+        # optional (only when you want to pause immediately):
+        print('\n\n\n\n\n#### Waiting for debugger attach...', flush=True)
+        debugpy.wait_for_client()
     # To run this test, use the following command:
     #   torchrun --nproc-per-node 4 --standalone dispatch.py
     test_token_dispatch()

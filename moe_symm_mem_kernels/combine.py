@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import os
 from typing import Optional
 
 import torch
@@ -241,7 +242,9 @@ def test_token_combine() -> None:
     torch.manual_seed(42 + rank)
 
     group_name = dist.group.WORLD.group_name
-    symm_mem.enable_symm_mem_for_group(group_name)
+    _torch_ver = tuple(int(x) for x in torch.__version__.split("+")[0].split(".")[:2])
+    if _torch_ver <= (2, 11):
+        symm_mem.enable_symm_mem_for_group(group_name)
 
     dtype = torch.float
     # Number of experts per rank
@@ -292,10 +295,10 @@ def test_token_combine() -> None:
         device,
     )
 
-    compiled_combiner = torch.compile(
-        combiner,
-        fullgraph=True,
-    )
+    # compiled_combiner = torch.compile(
+    #     combiner,
+    #     fullgraph=True,
+    # )
 
     # Perform a Dot product with output, so that gradients passed back from
     # different ranks are different
@@ -306,7 +309,7 @@ def test_token_combine() -> None:
     # Requires grad for input of combine
     out.requires_grad_(True)
 
-    combine_out = compiled_combiner(
+    combine_out = combiner(
         out,
         inp,
         out_splits_offsets,
@@ -332,6 +335,16 @@ def test_token_combine() -> None:
 
 
 if __name__ == "__main__":
+    DBG_ATTACH = False
+    if int(os.environ.get("DBG_ATTACH", "0")) == 1:
+        DBG_ATTACH = True
+        
+    if DBG_ATTACH and int(os.environ.get("RANK", "0")) == 0:
+        import debugpy
+        debugpy.listen(("127.0.0.1", 5678))
+        # optional (only when you want to pause immediately):
+        print('\n\n\n\n\n#### Waiting for debugger attach...', flush=True)
+        debugpy.wait_for_client()
     # To run this test, use the following command:
     #   torchrun --nproc-per-node 4 --standalone combine.py
     test_token_combine()

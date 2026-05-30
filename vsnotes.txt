@@ -16,3 +16,16 @@ Opens:
     triton_ce backend failed, triton threw out of resources
 * benchmark/benchmark_all_gather_matmul.py
     working but reduce dim to fit memory, verified on 8xH100 80GB
+
+
+
+source of moe_symm_mem_kernels
+
+https://github.com/pytorch/torchtitan
+checkout commit
+736f12d4c7c1f76d623463afbd168ed3fb29ef7a
+torchtitan/torchtitan/experiments/moe_symm_mem_kernels
+
+Fixes:
+1. disable torch.compile
+2. 

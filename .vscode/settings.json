@@ -12,5 +12,7 @@
     // "python.testing.pytestArgs": [] // use this to filter test files
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.analysis.extraPaths": [], // add extra paths for pylance, useful for scripts outside of site-packages
+    "python.analysis.extraPaths": [],
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda", // add extra paths for pylance, useful for scripts outside of site-packages
 }

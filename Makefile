@@ -27,8 +27,14 @@ bench-ar-bias-rms-norm:
 	DBG_ATTACH=$(dbg) $(intranode_run) benchmark/benchmark_all_reduce_bias_rms_norm.py
 
 # https://github.com/meta-pytorch/kraken/pull/32
-bench-a2a-ep:
+a2a-ep:
 	DBG_ATTACH=$(dbg) $(intranode_run) benchmark/benchmark_moe_a2a.py --save-path moe_a2a_results.csv
+
+dispatch-torchtitan-test:
+	DBG_ATTACH=$(dbg) $(intranode_run) moe_symm_mem_kernels/dispatch.py
+
+combine-torchtitan-test:
+	DBG_ATTACH=$(dbg) $(intranode_run) moe_symm_mem_kernels/combine.py
 
 bench-all:
 	$(MAKE) bench-ar
