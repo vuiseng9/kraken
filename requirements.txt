@@ -4,3 +4,4 @@ tyro
 cuda-bindings
 matplotlib
 click
+debugpy
