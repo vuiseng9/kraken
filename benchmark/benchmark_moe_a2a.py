@@ -700,7 +700,7 @@ if __name__ == "__main__":
         
     if DBG_ATTACH and int(os.environ.get("RANK", "0")) == 0:
         import debugpy
-        debugpy.listen(("127.0.0.1", 5678))
+        debugpy.listen(("127.0.0.1", 9999))
         # optional (only when you want to pause immediately):
         print('\n\n\n\n\n#### Waiting for debugger attach...', flush=True)
         debugpy.wait_for_client()
